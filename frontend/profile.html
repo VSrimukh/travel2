@@ -192,7 +192,7 @@
   </head>
   <body>
     <div class="header">
-      <a href="main.html" class="back-button">← Back</a>
+      <a href="/main" class="back-button">← Back</a>
       <h1>My Profile</h1>
       <p>Manage your account information</p>
     </div>
@@ -318,7 +318,7 @@
         if (!user) {
           showValidationError("Please login to access your profile");
           setTimeout(() => {
-            window.location.href = "login.html";
+            window.location.href = "/login";
           }, 2000);
           return;
         }
@@ -458,7 +458,7 @@
       function logout() {
         if (confirm("Are you sure you want to logout?")) {
           localStorage.removeItem("travelmate_current_user");
-          window.location.href = "login.html";
+          window.location.href = "/login";
         }
       }
 

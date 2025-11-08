@@ -6,7 +6,7 @@ window.showBookingModal = function (serviceData) {
   if (!user) {
     alert("Please login to book trips. Redirecting to login page...");
     setTimeout(() => {
-      window.location.href = "login.html";
+      window.location.href = "/login";
     }, 1000);
     return;
   }

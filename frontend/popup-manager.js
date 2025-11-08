@@ -128,7 +128,7 @@ class PopupManager {
           text: "Back to Home",
           class: "button-success",
           action: () => {
-            window.location.href = "main.html";
+            window.location.href = "/main";
           },
         },
       ],

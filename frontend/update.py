@@ -1,81 +1,89 @@
 #!/usr/bin/env python3
 """
-Revert links back to .html for local testing
-Run this when testing locally, then run update_links.py before deploying
+Update all navigation links in HTML and JS files for Vercel deployment
+Removes .html extensions and uses clean URLs
 """
 
 import os
+import re
 from pathlib import Path
 
-# Reverse mappings: clean URLs → .html
-REVERT_MAPPINGS = {
+# Link mapping: old → new
+LINK_MAPPINGS = {
     # Homepage
-    'href="/"': 'href="index.html"',
-    "href='/'": "href='index.html'",
+    'href="getstart.html"': 'href="/"',
+    'href="index.html"': 'href="/"',
+    "href='getstart.html'": "href='/'",
+    "href='index.html'": "href='/'",
     
-    # Main pages
-    'href="/main"': 'href="main.html"',
-    'href="/flights"': 'href="flights.html"',
-    'href="/trains"': 'href="trains.html"',
-    'href="/buses"': 'href="buses.html"',
-    'href="/cabs"': 'href="cabs.html"',
-    'href="/hotels"': 'href="hotels.html"',
-    'href="/tours"': 'href="tours.html"',
-    'href="/cruise"': 'href="cruise.html"',
-    'href="/insurance"': 'href="insurance.html"',
+    # Main navigation pages
+    'href="main.html"': 'href="/main"',
+    'href="flights.html"': 'href="/flights"',
+    'href="trains.html"': 'href="/trains"',
+    'href="buses.html"': 'href="/buses"',
+    'href="cabs.html"': 'href="/cabs"',
+    'href="hotels.html"': 'href="/hotels"',
+    'href="tours.html"': 'href="/tours"',
+    'href="cruise.html"': 'href="/cruise"',
+    'href="insurance.html"': 'href="/insurance"',
     
     # User pages
-    'href="/login"': 'href="login.html"',
-    'href="/signup"': 'href="signup.html"',
-    'href="/profile"': 'href="profile.html"',
-    'href="/upcoming"': 'href="upcoming.html"',
-    'href="/completed"': 'href="completed.html"',
-    'href="/wallent"': 'href="wallent.html"',
-    'href="/plan"': 'href="plan.html"',
-    'href="/discover"': 'href="discover.html"',
-    'href="/ticket"': 'href="ticket.html"',
+    'href="login.html"': 'href="/login"',
+    'href="signup.html"': 'href="/signup"',
+    'href="profile.html"': 'href="/profile"',
+    'href="upcoming.html"': 'href="/upcoming"',
+    'href="completed.html"': 'href="/completed"',
+    'href="wallent.html"': 'href="/wallent"',
+    'href="plan.html"': 'href="/plan"',
+    'href="discover.html"': 'href="/discover"',
+    'href="ticket.html"': 'href="/ticket"',
     
     # JavaScript window.location.href
-    'window.location.href = "/main"': 'window.location.href = "main.html"',
-    'window.location.href = "/login"': 'window.location.href = "login.html"',
-    'window.location.href = "/signup"': 'window.location.href = "signup.html"',
-    'window.location.href = "/"': 'window.location.href = "index.html"',
-    'window.location.href = "/flights"': 'window.location.href = "flights.html"',
-    'window.location.href = "/trains"': 'window.location.href = "trains.html"',
-    'window.location.href = "/buses"': 'window.location.href = "buses.html"',
-    'window.location.href = "/cabs"': 'window.location.href = "cabs.html"',
-    'window.location.href = "/hotels"': 'window.location.href = "hotels.html"',
-    'window.location.href = "/tours"': 'window.location.href = "tours.html"',
+    'window.location.href = "main.html"': 'window.location.href = "/main"',
+    'window.location.href = "login.html"': 'window.location.href = "/login"',
+    'window.location.href = "signup.html"': 'window.location.href = "/signup"',
+    'window.location.href = "profile.html"': 'window.location.href = "/profile"',
+    'window.location.href = "getstart.html"': 'window.location.href = "/"',
+    'window.location.href = "index.html"': 'window.location.href = "/"',
+    'window.location.href = "flights.html"': 'window.location.href = "/flights"',
+    'window.location.href = "trains.html"': 'window.location.href = "/trains"',
+    'window.location.href = "buses.html"': 'window.location.href = "/buses"',
+    'window.location.href = "cabs.html"': 'window.location.href = "/cabs"',
+    'window.location.href = "hotels.html"': 'window.location.href = "/hotels"',
+    'window.location.href = "tours.html"': 'window.location.href = "/tours"',
+    'window.location.href = "cruise.html"': 'window.location.href = "/cruise"',
+    'window.location.href = "insurance.html"': 'window.location.href = "/insurance"',
+    'window.location.href = "upcoming.html"': 'window.location.href = "/upcoming"',
+    'window.location.href = "completed.html"': 'window.location.href = "/completed"',
+    'window.location.href = "wallent.html"': 'window.location.href = "/wallent"',
     
-    # Single quotes
-    "window.location.href = '/main'": "window.location.href = 'main.html'",
-    "window.location.href = '/login'": "window.location.href = 'login.html'",
-    "window.location.href = '/signup'": "window.location.href = 'signup.html'",
-    
-    # Query strings
-    '`/ticket?id=': '`ticket.html?id=',
-    '`/plan?destination=': '`plan.html?destination=',
-    '`/plan?search=': '`plan.html?search=',
+    # Single quotes variant
+    "window.location.href = 'main.html'": "window.location.href = '/main'",
+    "window.location.href = 'login.html'": "window.location.href = '/login'",
+    "window.location.href = 'signup.html'": "window.location.href = '/signup'",
+    "window.location.href = 'getstart.html'": "window.location.href = '/'",
 }
 
-def revert_file(file_path):
-    """Revert navigation links in a single file"""
+def update_file(file_path):
+    """Update navigation links in a single file"""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
         original_content = content
-        replacements_made = []
+        replacements = 0
         
-        for clean_url, html_link in REVERT_MAPPINGS.items():
-            if clean_url in content:
-                content = content.replace(clean_url, html_link)
-                replacements_made.append(clean_url)
+        # Apply all mappings
+        for old_link, new_link in LINK_MAPPINGS.items():
+            if old_link in content:
+                content = content.replace(old_link, new_link)
+                replacements += 1
         
+        # Only write if changes were made
         if content != original_content:
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            return True, len(replacements_made)
+            return True, replacements
         
         return False, 0
         
@@ -84,58 +92,69 @@ def revert_file(file_path):
         return False, 0
 
 def main():
-    print("🔙 Reverting Links for Local Development")
-    print("=" * 60)
+    print("🔗 Updating Navigation Links for Vercel Deployment")
+    print("=" * 50)
     print()
     
-    current_dir = Path(".")
-    html_files = list(current_dir.glob("*.html"))
-    js_files = list(current_dir.glob("*.js"))
+    # Find the frontend directory
+    frontend_dir = Path("travel-mate/frontend")
     
-    if not html_files:
-        print("❌ Error: No HTML files found!")
-        return
-    
-    print(f"📁 Found {len(html_files)} HTML files and {len(js_files)} JS files")
-    print()
+    if not frontend_dir.exists():
+        # Try current directory
+        frontend_dir = Path("frontend")
+        if not frontend_dir.exists():
+            # Try looking in current directory for HTML files
+            frontend_dir = Path(".")
+            html_files = list(frontend_dir.glob("*.html"))
+            if not html_files:
+                print("❌ Error: Could not find HTML files!")
+                print("   Please run this script from the project root or frontend directory.")
+                return
     
     # Process HTML files
-    print("📄 Reverting HTML files...")
+    print("📄 Processing HTML files...")
+    html_files = list(frontend_dir.glob("*.html"))
     updated_html = 0
     
-    for file_path in sorted(html_files):
-        changed, count = revert_file(file_path)
+    for file_path in html_files:
+        changed, count = update_file(file_path)
         if changed:
-            print(f"  ✅ Reverted: {file_path.name} ({count} replacements)")
+            print(f"  ✓ Updated: {file_path.name} ({count} replacements)")
             updated_html += 1
-        else:
-            print(f"  ⚪ No changes: {file_path.name}")
+    
+    if updated_html == 0:
+        print("  ℹ️  No HTML files needed updating")
     
     # Process JavaScript files
     print()
-    print("📜 Reverting JavaScript files...")
+    print("📜 Processing JavaScript files...")
+    js_files = list(frontend_dir.glob("*.js"))
     updated_js = 0
     
-    for file_path in sorted(js_files):
-        changed, count = revert_file(file_path)
+    for file_path in js_files:
+        changed, count = update_file(file_path)
         if changed:
-            print(f"  ✅ Reverted: {file_path.name} ({count} replacements)")
+            print(f"  ✓ Updated: {file_path.name} ({count} replacements)")
             updated_js += 1
-        else:
-            print(f"  ⚪ No changes: {file_path.name}")
     
+    if updated_js == 0:
+        print("  ℹ️  No JavaScript files needed updating")
+    
+    # Summary
     print()
-    print("=" * 60)
-    print("✅ Links reverted to .html for local testing!")
-    print(f"   📊 Updated {updated_html} HTML file(s) and {updated_js} JS file(s)")
+    print("✅ Link update complete!")
+    print(f"   Updated {updated_html} HTML file(s) and {updated_js} JS file(s)")
     print()
-    print("💡 Now you can:")
-    print("   • Open index.html directly in browser")
-    print("   • Use Live Server")
-    print("   • Test locally without issues")
+    print("📋 Changes made:")
+    print("   • .html extensions removed from all navigation links")
+    print("   • Clean URLs: /main, /flights, /login, etc.")
+    print("   • Homepage links updated to /")
     print()
-    print("⚠️  Before deploying to Vercel:")
-    print("   Run: python update_links.py")
+    print("🎉 Your files are now ready for Vercel deployment!")
+    print()
+    print("Next steps:")
+    print("  1. cd travel-mate")
+    print("  2. vercel (or push to GitHub for auto-deploy)")
 
 if __name__ == "__main__":
     main()

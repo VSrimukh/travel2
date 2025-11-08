@@ -204,9 +204,9 @@
         <div class="success-message" id="successMessage"></div>
         <button type="submit" class="login-btn">Login</button>
       </form>
-      <p>Don't have an account? <a href="signup.html">Sign up here</a></p>
+      <p>Don't have an account? <a href="/signup">Sign up here</a></p>
       <div class="back-home">
-        <a href="index.html">← Back to Home</a>
+        <a href="/">← Back to Home</a>
       </div>
     </div>
 
@@ -260,7 +260,7 @@
               "Welcome back, " + user.username + "!"
             );
             setTimeout(() => {
-              window.location.href = "main.html";
+              window.location.href = "/main";
             }, 2000);
           } else {
             const userExists = users.find(
