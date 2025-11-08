@@ -1,0 +1,6 @@
+flask
+flask-cors
+langchain-ollama
+langchain-core
+ollama
+python-dotenv
